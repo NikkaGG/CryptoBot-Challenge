@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Демо аукциона подарков</title>
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body>
+    <main>
+      <header class="header">
+        <h1>Демо аукциона подарков</h1>
+        <p class="muted">Многораундовый аукцион: cutoff-цена + anti-sniping. Валюта — Stars.</p>
+      </header>
+
+      <div class="layout">
+        <div class="sidebar">
+          <section class="card">
+            <h2>Пользователь</h2>
+            <div class="row">
+              <button id="btnCreateUser">Создать пользователя</button>
+              <button id="btnReloadUser" class="secondary">Обновить</button>
+              <span class="mono" id="userId"></span>
+            </div>
+
+            <div class="stats">
+              <div class="stat">
+                <div class="label">Доступно</div>
+                <div class="value mono" id="userAvailable">—</div>
+              </div>
+              <div class="stat">
+                <div class="label">В резерве</div>
+                <div class="value mono" id="userReserved">—</div>
+              </div>
+              <div class="stat">
+                <div class="label">Потрачено</div>
+                <div class="value mono" id="userSpent">—</div>
+              </div>
+            </div>
+
+            <div class="row">
+              <label>
+                Пополнить (Stars)
+                <input id="topupAmount" type="number" min="1" step="1" value="1000" />
+              </label>
+              <button id="btnTopup">Пополнить</button>
+            </div>
+
+            <details>
+              <summary>Детали пользователя (JSON)</summary>
+              <pre id="userState"></pre>
+            </details>
+          </section>
+
+          <section class="card">
+            <h2>Создать аукцион</h2>
+            <div class="grid">
+              <label>Название <input id="auctionTitle" value="Демо-подарок" /></label>
+              <label>Количество (всего) <input id="auctionQty" type="number" min="1" step="1" value="50" /></label>
+              <label>Длительность раунда (мс) <input id="roundDuration" type="number" min="1000" step="1000" value="60000" /></label>
+              <label>Победителей за раунд <input id="winnersPerRound" type="number" min="1" step="1" value="10" /></label>
+              <label>Окно anti-snipe (мс) <input id="antiWindow" type="number" min="0" step="1000" value="10000" /></label>
+              <label>Продление anti-snipe (мс) <input id="antiExtend" type="number" min="0" step="1000" value="10000" /></label>
+              <label>Макс. длительность (мс, 0=выкл.) <input id="maxDurationMs" type="number" min="0" step="1000" value="0" /></label>
+              <label>Макс. пустых раундов (0=выкл.) <input id="maxEmptyRounds" type="number" min="0" step="1" value="3" /></label>
+            </div>
+            <div class="row">
+              <button id="btnCreateAuction">Создать</button>
+            </div>
+            <details>
+              <summary>Ответ API (создание аукциона)</summary>
+              <pre id="createAuctionOut"></pre>
+            </details>
+          </section>
+
+          <section class="card">
+            <h2>Аукционы</h2>
+            <div class="row">
+              <button id="btnReloadAuctions" class="secondary">Обновить список</button>
+            </div>
+            <div id="auctionsList" class="list"></div>
+          </section>
+
+          <section class="card">
+            <h2>Нагрузочный тест</h2>
+            <p class="muted">Запуск: <span class="mono">npm run loadtest</span> (смотрите вывод в консоли).</p>
+          </section>
+        </div>
+
+        <div class="content">
+          <section class="card">
+            <h2>Аукцион (работа)</h2>
+
+            <h3>Управление</h3>
+            <div class="row">
+              <label>
+                ID аукциона
+                <input id="selectedAuctionId" class="mono" placeholder="ID аукциона" />
+              </label>
+              <button id="btnSelectAuction" class="secondary">Выбрать</button>
+              <button id="btnStartAuction">Старт</button>
+              <button id="btnCancelAuction" class="danger">Отменить</button>
+            </div>
+
+            <div class="stats">
+              <div class="stat">
+                <div class="label">Состояние</div>
+                <div class="value"><span class="pill" id="auctionStateLabel">—</span></div>
+              </div>
+              <div class="stat">
+                <div class="label">Раунд</div>
+                <div class="value mono" id="roundNumber">—</div>
+              </div>
+              <div class="stat">
+                <div class="label">Выдано</div>
+                <div class="value mono" id="awarded">—</div>
+              </div>
+              <div class="stat">
+                <div class="label">Остаток</div>
+                <div class="value mono" id="remainingQty">—</div>
+              </div>
+              <div class="stat">
+                <div class="label">Выручка</div>
+                <div class="value mono" id="revenue">—</div>
+              </div>
+              <div class="stat">
+                <div class="label">Осталось времени</div>
+                <div class="value mono" id="timeRemaining">—</div>
+              </div>
+              <div class="stat">
+                <div class="label">Проходная (оценка)</div>
+                <div class="value mono" id="estimatedCutoff">—</div>
+              </div>
+            </div>
+
+            <h3>Ставка</h3>
+            <div class="row">
+              <label>
+                Ставка (Stars)
+                <input id="bidAmount" type="number" min="1" step="1" value="1" />
+              </label>
+              <button id="btnBid">Сделать / повысить</button>
+              <button id="btnWithdraw" class="secondary">Снять</button>
+            </div>
+
+            <h3>Боты</h3>
+            <div class="grid">
+              <label>
+                Количество ботов
+                <input id="botCount" type="number" min="1" step="1" value="30" />
+              </label>
+              <label>
+                Баланс на бота (Stars)
+                <input id="botTopup" type="number" min="1" step="1" value="5000" />
+              </label>
+              <label>
+                Макс. ставка бота
+                <input id="botMaxBid" type="number" min="1" step="1" value="5000" />
+              </label>
+            </div>
+            <div class="row">
+              <button id="btnStartBots">Запустить ботов</button>
+              <button id="btnStopBots" class="danger">Остановить</button>
+              <button id="btnBotsStatus" class="secondary">Статус</button>
+            </div>
+            <details>
+              <summary>Вывод (боты)</summary>
+              <pre id="botsOut"></pre>
+            </details>
+
+            <h3>Проверки</h3>
+            <div class="row">
+              <button id="btnAuditAuction" class="secondary">Инварианты аукциона</button>
+              <button id="btnAuditGlobal" class="secondary">Глобальные инварианты</button>
+            </div>
+            <details>
+              <summary>Вывод (аудит)</summary>
+              <pre id="auditOut"></pre>
+            </details>
+
+            <details>
+              <summary>Состояние аукциона (JSON)</summary>
+              <pre id="auctionState"></pre>
+            </details>
+
+            <div class="split">
+              <div>
+                <h3>Лидеры (топ 20)</h3>
+                <div id="leaderboard"></div>
+              </div>
+              <div>
+                <h3>Последние раунды</h3>
+                <div id="recentRounds"></div>
+              </div>
+            </div>
+          </section>
+        </div>
+      </div>
+    </main>
+
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>
